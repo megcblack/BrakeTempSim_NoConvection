@@ -35,6 +35,12 @@ if pdf == 0
 end
 disp('would you like suppress matlab gui graph output?')
 hide_graphs = input('yes = 0, no = 1');
+visible = 1;
+if hide_graphs == 0
+    visible = 0;
+end
+
+    
 
 %Definition of variables 
 VehicleMass = Car_Parameter(1); % [kg]
@@ -191,7 +197,7 @@ for curDataSet = 1:1:numDataSets
     fprintf('\nPercent Error of Temperature for Data Set %d = %3.2f%%\n ',curDataSet, AvgP{curDataSet})        
 
     %% Plots
-    f = figure('Name', "Brake Temperature Comparison " + num2str(curDataSet)); % create temperature comparison figure
+    f = figure('Name', "Brake Temperature Comparison " + num2str(curDataSet), 'Visible', visible); % create temperature comparison figure
     title(['Brake Temperature Comparison for Data Set ', num2str(curDataSet)])
     hold on
     plot(timeArray{curDataSet},RotorTempArrayF{curDataSet},'-r') %sim temps, red line.
@@ -199,38 +205,41 @@ for curDataSet = 1:1:numDataSets
     ylabel('Temperature (Deg F)') 
     legend('Simulated Temperature','Actual Temperature','Location','northwest')
     xlabel('Time (seconds)')
+    hold off
     if pdf == 0
         exportgraphics(f.CurrentAxes, filePath, 'Append', true);
     end
     
-    f = figure('Name', "Temperature Percent Error " + num2str(curDataSet));
+    f = figure('Name', "Temperature Percent Error " + num2str(curDataSet), 'Visible', visible);
+    hold on
     plot(timeArray{curDataSet},PercErr{curDataSet})
     title(['Temperature Percent Error for Data Set ', num2str(curDataSet)])
     xlabel('Time (seconds)')
     ylabel('% Error')
+    hold off
     if pdf == 0
         exportgraphics(f.CurrentAxes, filePath, 'Append', true);
     end
     
-    f = figure('Name', "Power Over Time " + num2str(curDataSet));
+    f = figure('Name', "Power Over Time " + num2str(curDataSet), 'Visible', visible);
+    hold on
     plot(timeArray{curDataSet},Power{curDataSet})
     title(['Power Over Time for Data Set ', num2str(curDataSet)])
     xlabel('Time (seconds)')
     ylabel('Power (Watts)')
+    hold off
     if pdf == 0
         exportgraphics(f.CurrentAxes, filePath, 'Append', true);
     end
-    f = figure('Name', "Pad Fraction Over Time " + num2str(curDataSet));
+    f = figure('Name', "Pad Fraction Over Time " + num2str(curDataSet), 'Visible', visible);
+    hold on
     plot(timeArray{curDataSet},PadFrac{curDataSet})
     title(['Pad Fraction Over Time for Data Set ', num2str(curDataSet)])
     xlabel('Time (seconds)')
     ylabel('Pad Fraction')
+    hold off
     if pdf == 0
         exportgraphics(f.CurrentAxes, filePath, 'Append', true);
-    end
-
-    if hide_graphs == 0
-        close all
     end
 end
 
