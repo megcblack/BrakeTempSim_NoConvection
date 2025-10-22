@@ -62,6 +62,8 @@ timeArray = cell(numDataSets, 1 );
 brakeTempArrayC = cell(numDataSets, 1);
 speedArrayMPH = cell(numDataSets, 1);
 brakePressArray = cell(numDataSets, 1);
+brakeTempArrayF = cell(numDataSets, 1);
+speedArray = cell(numDataSets, 1);
 
 for n = 1:1:numDataSets
     timeArray{n} = readmatrix(driveDataFile, 'Sheet', n, 'Range', 'A:A'); % [sec]
@@ -70,14 +72,13 @@ for n = 1:1:numDataSets
     brakePressArray{n} = readmatrix(driveDataFile, 'Sheet', n, 'Range', 'D:D'); % [psi]
 end
 
+
 %% Filtering and unit conversion
 
 %initialize and fill new arrays of vectors for filtered/converted PoI
-brakeTempArrayF = cell(numDataSets, 1);
-speedArray = cell(numDataSets, 1);
 
+% strip data of headers; assumes the first row is headers
 for m = 1:1:numDataSets
-    % strip data of headers; assumes the first row is headers
     timeArray{m}(1) = [];
     brakeTempArrayC{m}(1) = []; 
     speedArrayMPH{m}(1) = [];
@@ -143,7 +144,7 @@ for curDataSet = 1:1:numDataSets
            DS=1;
         end
     
-        if DS < 0 & brakePressArray{curDataSet}(i)> min(brakePressArray{curDataSet})% determines whether you are braking or accelerating, needs brake pressure input
+        if DS < 0 && brakePressArray{curDataSet}(i)> min(brakePressArray{curDataSet})% determines whether you are braking or accelerating, needs brake pressure input
            Energy1{curDataSet}(i) = (.5*VehicleMass*(prevSpeed^2 - newSpeed^2)); %Linear Kinetic Energy J
            Energy2{curDataSet}(i) = 4*(.5*rotInertia*(omegaP^2-omegaN^2)); %Rotational Kinetic Energy J
            Energy{curDataSet}(i) = Energy1{curDataSet}(i) + Energy2{curDataSet}(i); %Total Energy J
@@ -309,6 +310,7 @@ function driveDataFile = getDriveData()
     end
 end
 
+function remove
 
 
 
