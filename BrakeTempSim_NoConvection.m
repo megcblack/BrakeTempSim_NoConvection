@@ -74,8 +74,6 @@ numDataSets = numel(sheetNames); % returns length of sheetNames array, i.e., num
     RotorTempArrayK{curDataSet} = zeros(N, 1); % [degK] rotor temperature array
     RotorTempArrayF{curDataSet} = zeros(N, 1); % [degF] rotor temperature array
     d{curDataSet} = zeros(N, 1); % [m] displacement array
-    Fdrag{curDataSet} = zeros(N, 1); % [N] drag force array
-    Edrag{curDataSet} = zeros(N, 1); % [N*m] drag energy array
     prevTemp{curDataSet} = zeros(N, 1); % [K] previous temperature array
     h{curDataSet} = zeros(N, 1); % [kW/(m^2 K)] convection coefficient array
     PadFrac{curDataSet} = zeros(N, 1); % [-] pad fraction array
@@ -111,7 +109,7 @@ numDataSets = numel(sheetNames); % returns length of sheetNames array, i.e., num
         omegaP = prevSpeed/wheelRad; %Previous Rotational Speed rad/s
         omegaN = newSpeed/wheelRad; %New Rotational Speed rad/s
         DS = (newSpeed - prevSpeed); %Speed delta m/s
-        prevTemp{curDataSet}(i) = RTK(i-1); %stores new initial temp
+        prevTemp{curDataSet}(i) = RotorTempArrayK{curDataSet}(i-1); %stores new initial temp
         
         tbrake = t(i)-t(i-1); %time to current loop step
         h_w=x1*v(i) + b1;
@@ -331,8 +329,11 @@ end
 
 function Edrag = calculateAirBrakingEnergy(timeArray, speedArray, airDensity, dragCoeff, frontalArea, numDataSets)
     Edrag = cell(numDataSets, 1);
+    Fdrag = cell(numDataSets, 1);
     for curDataSet=1:numDataSets
         Edrag{curDataSet} = zeros(length(timeArray{curDataSet}), 1); % Preallocate
+        Fdrag{curDataSet} = zeros(length(timeArray{curDataSet}), 1); % Preallocate
+
         %% Calculate displacement
         d{curDataSet}(1) = 0; % [m] intial displacement
         dt = diff(timeArray{curDataSet});
@@ -344,6 +345,51 @@ function Edrag = calculateAirBrakingEnergy(timeArray, speedArray, airDensity, dr
         Fdrag{curDataSet} = 0.5 * airDensity * dragCoeff * frontalArea * speed.^2;
         Edrag{curDataSet} = Fdrag{curDataSet} .* d{curDataSet};
     end
+end
+
+function [RotorTempArrayK, RotorTempArrayF] = calculateRotorTemp(timeArray, speedArray, brakePressArray)
+    
+    for curDataSet = 1:1:numDataSets
+        t = timeArray{curDataSet};
+        v = speedArray{curDataSet};
+        bp = brakePressArray{curDataSet};
+        
+        for i= 2:1:length(t)
+            prevSpeed = v(i-1); %Previous Linear Speed m/s
+            newSpeed = v(i); %New Linear Speed m/s
+            omegaP = prevSpeed/wheelRad; %Previous Rotational Speed rad/s
+            omegaN = newSpeed/wheelRad; %New Rotational Speed rad/s
+            DS = (newSpeed - prevSpeed); %Speed delta m/s
+            prevTemp{curDataSet}(i) = RotorTempArrayK{curDataSet}(i-1); %stores new initial temp
+            
+            tbrake = t(i)-t(i-1); %time to current loop step
+            h_w=x1*v(i) + b1;
+            h{curDataSet}(i)=h_w/1000;%kW/(m^2 K)
+            Rrotor=1/(h{curDataSet}(i)*RotorArea); %thermal resistance of rotor convection
+            RotorDiameter = .206; %m
+            PadFrac{curDataSet}(i)=prevTemp{curDataSet}(i)*x2 + b2; %percent braking power into pads
+            SpecHeat = 0.0005*prevTemp{curDataSet}(i)+0.2813; %specific heat capacity of 4130 [J/g*K]
+            
+            if DS < -5 %if speed sensor is tripped, the simulation will not see braking by accident
+               DS=1;
+            end
+        
+            if DS < 0 && brakePressArray{curDataSet}(i)> min(brakePressArray{curDataSet})% determines whether you are braking or accelerating, needs brake pressure input
+                calculateBrakesApplied();
+            else
+                calculateBrakesNotApplied();
+            end
+        end
+    end
+   
+end
+
+function calculateBrakesApplied()
+
+end
+
+function calculateBrakesNotApplied()
+
 end
 
 
