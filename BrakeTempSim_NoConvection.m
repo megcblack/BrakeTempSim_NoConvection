@@ -53,49 +53,51 @@ rotInertia = Car_Parameter(7); % [kg*m^2]
 wheelRad = Car_Parameter(8); % [m]
 airDensity = Car_Parameter(9); % [kg/m^3] 
 
-%Import data from Excel
+%Import data from Excel%[~, sheetNames] = xlsfinfo(driveDataFile); % create array of sheet names 
 [~, sheetNames] = xlsfinfo(driveDataFile); % create array of sheet names 
 numDataSets = numel(sheetNames); % returns length of sheetNames array, i.e., number of sheets/data sets
 
-% initialize and fill array of vectors for each parameter of interest
-timeArray = cell(numDataSets, 1 );
-brakeTempArrayC = cell(numDataSets, 1);
-speedArrayMPH = cell(numDataSets, 1);
-brakePressArray = cell(numDataSets, 1);
-brakeTempArrayF = cell(numDataSets, 1);
-speedArray = cell(numDataSets, 1);
+[timeArray, brakeTempArrayC, speedArrayMPH, brakePressArray, brakeTempArrayF, speedArray] = filterData(numDataSets, driveDataFile);
 
-for n = 1:1:numDataSets
-    timeArray{n} = readmatrix(driveDataFile, 'Sheet', n, 'Range', 'A:A'); % [sec]
-    brakeTempArrayC{n} = readmatrix(driveDataFile, 'Sheet', n, 'Range', 'B:B'); % [deg C]
-    speedArrayMPH{n} = readmatrix(driveDataFile, 'Sheet', n, 'Range', 'C:C'); % [MPH]
-    brakePressArray{n} = readmatrix(driveDataFile, 'Sheet', n, 'Range', 'D:D'); % [psi]
-end
+% % initialize and fill array of vectors for each parameter of interest
+% timeArray = cell(numDataSets, 1 );
+% brakeTempArrayC = cell(numDataSets, 1);
+% speedArrayMPH = cell(numDataSets, 1);
+% brakePressArray = cell(numDataSets, 1);
+% brakeTempArrayF = cell(numDataSets, 1);
+% speedArray = cell(numDataSets, 1);
+
+% for n = 1:1:numDataSets
+%     timeArray{n} = readmatrix(driveDataFile, 'Sheet', n, 'Range', 'A:A'); % [sec]
+%     brakeTempArrayC{n} = readmatrix(driveDataFile, 'Sheet', n, 'Range', 'B:B'); % [deg C]
+%     speedArrayMPH{n} = readmatrix(driveDataFile, 'Sheet', n, 'Range', 'C:C'); % [MPH]
+%     brakePressArray{n} = readmatrix(driveDataFile, 'Sheet', n, 'Range', 'D:D'); % [psi]
+% end
 
 
-%% Filtering and unit conversion
+% %% Filtering and unit conversion
 
-%initialize and fill new arrays of vectors for filtered/converted PoI
+% %initialize and fill new arrays of vectors for filtered/converted PoI
 
-% strip data of headers; assumes the first row is headers
-for m = 1:1:numDataSets
-    timeArray{m}(1) = [];
-    brakeTempArrayC{m}(1) = []; 
-    speedArrayMPH{m}(1) = [];
-    brakePressArray{m}(1) = [];
+% % strip data of headers; assumes the first row is headers
+% for m = 1:1:numDataSets
+%     timeArray{m}(1) = [];
+%     brakeTempArrayC{m}(1) = []; 
+%     speedArrayMPH{m}(1) = [];
+%     brakePressArray{m}(1) = [];
 
-    % correct noise in speed data and convert from MPH to m/s
-    for mm = 1:1:length(speedArrayMPH{m})
-        if speedArrayMPH{m}(mm) > 80
-        speedArrayMPH{m}(mm) = 0;
-        end
-        speedArray{m}(mm) = speedArrayMPH{m}(mm)*.277778;
-    end
-    % convert brake temp to Farenheit
-    for mn = 1:1:length(brakeTempArrayC{m})
-        brakeTempArrayF{m}(mn) = (brakeTempArrayC{m}(mn) * 9/5) + 32;
-    end
-end
+%     % correct noise in speed data and convert from MPH to m/s
+%     for mm = 1:1:length(speedArrayMPH{m})
+%         if speedArrayMPH{m}(mm) > 80
+%         speedArrayMPH{m}(mm) = 0;
+%         end
+%         speedArray{m}(mm) = speedArrayMPH{m}(mm)*.277778;
+%     end
+%     % convert brake temp to Farenheit
+%     for mn = 1:1:length(brakeTempArrayC{m})
+%         brakeTempArrayF{m}(mn) = (brakeTempArrayC{m}(mn) * 9/5) + 32;
+%     end
+% end
 
   %% Tuning Parameters
     x1=1.85; %convection coeffecient trend line
@@ -310,7 +312,43 @@ function driveDataFile = getDriveData()
     end
 end
 
-function remove
+function [timeArray, brakeTempArrayC, speedArrayMPH, brakePressArray, brakeTempArrayF, speedArray] = filterData(numDataSets, driveDataFile)
+    timeArray = cell(numDataSets, 1 );
+    brakeTempArrayC = cell(numDataSets, 1);
+    speedArrayMPH = cell(numDataSets, 1);
+    brakePressArray = cell(numDataSets, 1);
+    brakeTempArrayF = cell(numDataSets, 1);
+    speedArray = cell(numDataSets, 1);
+
+    for n = 1:numDataSets
+        data = readmatrix(driveDataFile, 'Sheet', n); % Read the entire sheet once
+    
+        % Assuming columns A-D correspond to time, temp, speed, and pressure
+        timeArray{n}        = data(:,1);
+        brakeTempArrayC{n}  = data(:,2);
+        speedArrayMPH{n}    = data(:,3);
+        brakePressArray{n}  = data(:,4);
+    end
+
+    % Strip headers and process data
+    for m = 1:numDataSets
+        % Remove header rows (first row)
+        timeArray{m}(1)        = [];
+        brakeTempArrayC{m}(1)  = []; 
+        speedArrayMPH{m}(1)    = [];
+        brakePressArray{m}(1)  = [];
+
+        % --- Speed cleanup & conversion ---
+        % Zero out speeds > 80 MPH
+        speed = speedArrayMPH{m};
+        speed(speed > 80) = 0;
+        % Convert to m/s (1 MPH = 0.44704 m/s)
+        speedArray{m} = speed * 0.44704;
+
+        % --- Temperature conversion (°C → °F) ---
+        brakeTempArrayF{m} = (brakeTempArrayC{m} * 9/5) + 32;
+    end
+end
 
 
 
