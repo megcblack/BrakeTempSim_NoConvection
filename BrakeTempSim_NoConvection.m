@@ -59,46 +59,6 @@ numDataSets = numel(sheetNames); % returns length of sheetNames array, i.e., num
 
 [timeArray, brakeTempArrayC, speedArrayMPH, brakePressArray, brakeTempArrayF, speedArray] = filterData(numDataSets, driveDataFile);
 
-% % initialize and fill array of vectors for each parameter of interest
-% timeArray = cell(numDataSets, 1 );
-% brakeTempArrayC = cell(numDataSets, 1);
-% speedArrayMPH = cell(numDataSets, 1);
-% brakePressArray = cell(numDataSets, 1);
-% brakeTempArrayF = cell(numDataSets, 1);
-% speedArray = cell(numDataSets, 1);
-
-% for n = 1:1:numDataSets
-%     timeArray{n} = readmatrix(driveDataFile, 'Sheet', n, 'Range', 'A:A'); % [sec]
-%     brakeTempArrayC{n} = readmatrix(driveDataFile, 'Sheet', n, 'Range', 'B:B'); % [deg C]
-%     speedArrayMPH{n} = readmatrix(driveDataFile, 'Sheet', n, 'Range', 'C:C'); % [MPH]
-%     brakePressArray{n} = readmatrix(driveDataFile, 'Sheet', n, 'Range', 'D:D'); % [psi]
-% end
-
-
-% %% Filtering and unit conversion
-
-% %initialize and fill new arrays of vectors for filtered/converted PoI
-
-% % strip data of headers; assumes the first row is headers
-% for m = 1:1:numDataSets
-%     timeArray{m}(1) = [];
-%     brakeTempArrayC{m}(1) = []; 
-%     speedArrayMPH{m}(1) = [];
-%     brakePressArray{m}(1) = [];
-
-%     % correct noise in speed data and convert from MPH to m/s
-%     for mm = 1:1:length(speedArrayMPH{m})
-%         if speedArrayMPH{m}(mm) > 80
-%         speedArrayMPH{m}(mm) = 0;
-%         end
-%         speedArray{m}(mm) = speedArrayMPH{m}(mm)*.277778;
-%     end
-%     % convert brake temp to Farenheit
-%     for mn = 1:1:length(brakeTempArrayC{m})
-%         brakeTempArrayF{m}(mn) = (brakeTempArrayC{m}(mn) * 9/5) + 32;
-%     end
-% end
-
   %% Tuning Parameters
     x1=1.85; %convection coeffecient trend line
     b1=60;
@@ -106,6 +66,31 @@ numDataSets = numel(sheetNames); % returns length of sheetNames array, i.e., num
     b2= 0.595;
 
 for curDataSet = 1:1:numDataSets
+
+    % Preallocate arrays
+    N = length(timeArray{curDataSet});
+    TambC{curDataSet} = zeros(N, 1); % [degC] ambient air temperature
+    TambK{curDataSet} = zeros(N, 1); % [degK]
+    RotorTempArrayK{curDataSet} = zeros(N, 1); % [degK] rotor temperature array
+    RotorTempArrayF{curDataSet} = zeros(N, 1); % [degF] rotor temperature array
+    d{curDataSet} = zeros(N, 1); % [m] displacement array
+    Fdrag{curDataSet} = zeros(N, 1); % [N] drag force array
+    Edrag{curDataSet} = zeros(N, 1); % [N*m] drag energy array
+    prevTemp{curDataSet} = zeros(N, 1); % [K] previous temperature array
+    h{curDataSet} = zeros(N, 1); % [kW/(m^2 K)] convection coefficient array
+    PadFrac{curDataSet} = zeros(N, 1); % [-] pad fraction array
+    Energy1{curDataSet} = zeros(N, 1); % [J] linear kinetic energy array
+    Energy2{curDataSet} = zeros(N, 1); % [J] rotational kinetic energy array
+    Energy{curDataSet} = zeros(N, 1); % [J] total kinetic energy array
+    CorrectedEnergy{curDataSet} = zeros(N, 1); % [J] corrected energy array
+    EBE{curDataSet} = zeros(N, 1); % [J] energy by braking event array
+    Power{curDataSet} = zeros(N, 1); % [W] power array
+    qout{curDataSet} = zeros(N, 1); % [kW] heat output array
+    Eout{curDataSet} = zeros(N, 1); % [kJ] energy output array
+    PeakTemp{curDataSet} = zeros(N, 1); % [degF] peak temperature
+    PercErr{curDataSet} = zeros(N, 1); % [%] percent error array
+    AvgP{curDataSet} = zeros(N, 1); % [%] average percent error
+
     %% Initial Conditions
     TambC{curDataSet} = brakeTempArrayC{curDataSet}(1); % [degC] ambient air temperature, second value in column as data is assumed to have headers
     TambK{curDataSet} = TambC{curDataSet} + 273; % [degK]
