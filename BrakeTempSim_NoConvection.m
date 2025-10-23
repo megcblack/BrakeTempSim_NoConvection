@@ -98,11 +98,9 @@ for curDataSet = 1:1:numDataSets
 
     %% Calculate displacement
     d{curDataSet}(1) = 0; % [m] intial displacement
-    for n = 2:1:length(timeArray{curDataSet}) % 
-        timestep = timeArray{curDataSet}(n)-timeArray{curDataSet}(n-1); % [sec] time step to increase the D
-        avgspd = (speedArray{curDataSet}(n-1) + speedArray{curDataSet}(n))/2 ; % [m/s] average speed over the timestep
-        d{curDataSet}(n) = avgspd*timestep; % [m]
-    end
+    dt = diff(timeArray{curDataSet});
+    avgspd = movmean(speedArray{curDataSet}, [1 0]); % average of current and previous
+    d{curDataSet}(2:end) = avgspd(2:end) .* dt;
 
     %% Calculate air braking energy 
     for k = 2:1:length(timeArray{curDataSet})
