@@ -221,7 +221,7 @@ numDataSets = numel(sheetNames); % returns length of sheetNames array, i.e., num
     if pdf == 0
         exportgraphics(f.CurrentAxes, filePath, 'Append', true);
     end
-end
+%end
 
 
 
@@ -347,8 +347,10 @@ function Edrag = calculateAirBrakingEnergy(timeArray, speedArray, airDensity, dr
     end
 end
 
-function [RotorTempArrayK, RotorTempArrayF] = calculateRotorTemp(timeArray, speedArray, brakePressArray)
-    
+function [RotorTempArrayK, RotorTempArrayF, Power] = calculateRotorTemp(timeArray, speedArray, brakePressArray)
+    RotorTempArrayK = cell(numDataSets, 1); % [degK] rotor temperature array
+    RotorTempArrayF = cell(numDataSets, 1); % [degF] rotor temperature array
+
     for curDataSet = 1:1:numDataSets
         t = timeArray{curDataSet};
         v = speedArray{curDataSet};
@@ -375,21 +377,48 @@ function [RotorTempArrayK, RotorTempArrayF] = calculateRotorTemp(timeArray, spee
             end
         
             if DS < 0 && brakePressArray{curDataSet}(i)> min(brakePressArray{curDataSet})% determines whether you are braking or accelerating, needs brake pressure input
-                calculateBrakesApplied();
+                [RotorTempArrayK{curDataSet}(i), Power{curDataSet}(i)] = calculateBrakesApplied(i);
             else
-                calculateBrakesNotApplied();
+                [RotorTempArrayK{curDataSet}(i), Power{curDataSet}(i)] = calculateBrakesNotApplied(i, RotorMass, SpecHeat, TambK, Rrotor, tbrake, prevTemp, curDataSet);
             end
         end
     end
    
 end
 
-function calculateBrakesApplied()
+function [RotorTempArrayK, Power] = calculateBrakesApplied(i, Edrag, VehicleMass, rotInertia, brakebias, RotorMass, SpecHeat, TambK, Rrotor, tbrake, PadFrac, prevTemp, curDataSet, prevSpeed, newSpeed, omegaP, omegaN)
+        
+        Energy1{curDataSet}(i) = (.5*VehicleMass*(prevSpeed^2 - newSpeed^2)); %Linear Kinetic Energy J
+        Energy2{curDataSet}(i) = 4*(.5*rotInertia*(omegaP^2-omegaN^2)); %Rotational Kinetic Energy J
+        Energy{curDataSet}(i) = Energy1{curDataSet}(i) + Energy2{curDataSet}(i); %Total Energy J
+        %total energy from braking
+        AeroFrac{curDataSet}(i) = Edrag{curDataSet}(i)/(Energy{curDataSet}(i)); %areo dynamic reduction in energy, unitless
+        BrakeFrac = .82 ; %based on average engine brake data
+        
+        CorrectedEnergy{curDataSet}(i) = Energy{curDataSet}(i) * 0.5*brakebias*(1-AeroFrac{curDataSet}(i))*(1-PadFrac{curDataSet}(i))*(BrakeFrac)*0.8; %J --> account for brake bias
+        deltaTK = ((CorrectedEnergy{curDataSet}(i)/1000)/(RotorMass * SpecHeat)); %rise in temp in rotor kelvin, energy converted to kJ
+        RotorTempArrayK{curDataSet}(i) = deltaTK + prevTemp{curDataSet}(i); %adds change in T to previous temp, divide by two because 
+        Power{curDataSet}(i) = CorrectedEnergy{curDataSet}(i)/tbrake;
+
+        qout{curDataSet}(i) = (RotorTempArrayK{curDataSet}(i)-TambK{curDataSet})/Rrotor; %Kwatts
+        Eout{curDataSet}(i) = qout{curDataSet}(i)*tbrake; %Kjoules
+        deltaTKout = ((Eout{curDataSet}(i))/(RotorMass * SpecHeat));
+        RotorTempArrayK{curDataSet}(i) = RotorTempArrayK{curDataSet}(i)-(deltaTKout);
 
 end
 
-function calculateBrakesNotApplied()
-
+function [RotorTempArrayK, Power] = calculateBrakesNotApplied(i, RotorMass, SpecHeat, TambK, Rrotor, tbrake, prevTemp, curDataSet)
+    qout{curDataSet}(i) = (prevTemp{curDataSet}(i)-TambK{curDataSet})/Rrotor; %Kwatts
+    Eout{curDataSet}(i) = qout{curDataSet}(i)*tbrake; %Kjoules
+    deltaTKout = ((Eout{curDataSet}(i))/(RotorMass * SpecHeat)); 
+    RotorTempArrayK{curDataSet}(i) = prevTemp{curDataSet}(i)-(deltaTKout);
+    %Energy1{curDataSet}(i) =0;
+    %Energy2{curDataSet}(i) = 0;
+    %Energy{curDataSet}(i) =0;
+    %CorrectedEnergy{curDataSet}(i) =0;
+    %EBE{curDataSet}(i) =0;
+    %Power{curDataSet}(i) = CorrectedEnergy{curDataSet}(i)/tbrake;
+    Power{curDataSet}(i) = 0;
 end
 
 
