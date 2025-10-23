@@ -103,10 +103,9 @@ for curDataSet = 1:1:numDataSets
     d{curDataSet}(2:end) = avgspd(2:end) .* dt;
 
     %% Calculate air braking energy 
-    for k = 2:1:length(timeArray{curDataSet})
-        Fdrag{curDataSet}(k) = 0.5 * airDensity * (speedArray{curDataSet}(k))^2 * dragCoeff * frontalArea; % [N] instantaneous drag force
-        Edrag{curDataSet}(k) = (Fdrag{curDataSet}(k) * d{curDataSet}(k)); % [N*m] instantaneous air drag energy
-    end
+    speed = speedArray{curDataSet};
+    Fdrag{curDataSet} = 0.5 * airDensity * dragCoeff * frontalArea * speed.^2;
+    Edrag{curDataSet} = Fdrag{curDataSet} .* d{curDataSet};
 
     %% Calculate rotor temp
     for i = 2:1:length(timeArray{curDataSet}) 
